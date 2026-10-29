@@ -202,15 +202,32 @@
       position: absolute;
       z-index: 15;
       display: none;
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.2);
+      width: 44px;
+      height: 44px;
+      border: 3.5px solid rgba(255, 255, 255, 0.15);
       border-top-color: #00ff88;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    #errorNotice {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background: rgba(220, 20, 60, 0.95);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      z-index: 100;
+      display: none;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     }
   </style>
 </head>
@@ -220,6 +237,7 @@
     <video id="mainVideo" playsinline webkit-playsinline x5-playsinline preload="auto"></video>
     <div class="vignette"></div>
     <div id="loader"></div>
+    <div id="errorNotice"></div>
 
     <!-- Start Overlay -->
     <div id="startScreen">
@@ -240,23 +258,24 @@
   </div>
 
   <script>
+    // GitHub Repo root ke direct video names match kiye gaye hain
     const STORY_FLOW = [
       {
-        video: "videos/01_intro_tour.mp4",
+        video: "01_intro_tour.mp4",
         badge: "JUNGLE ENTRY",
         type: "button",
         prompt: "Panda puch raha hai... Jungle tour pe chalna hai?",
         btnText: "CHALO ➔"
       },
       {
-        video: "videos/02_bhoot_warning.mp4",
+        video: "02_bhoot_warning.mp4",
         badge: "WARNING",
         type: "button",
         prompt: "Haweli ka raasta aage hai, dhyan se...",
         btnText: "AAGE BADHO ➔"
       },
       {
-        video: "videos/03_torch_walk.mp4",
+        video: "03_torch_walk.mp4",
         badge: "GATE #01 PASSWORD",
         type: "input_quiz",
         prompt: "🚪 Pehla darwaza tabhi khulega jab sahi password type karogi: 'Duniya ka sabse bada jhooth kya hai jo Tannu bolti hai?' (Hint: 5 min / so rahi hu / innocent)",
@@ -264,12 +283,12 @@
         btnText: "UNLOCK GATE 1 🔓"
       },
       {
-        video: "videos/04_gate_reveal1.mp4",
+        video: "04_gate_reveal.mp4",
         badge: "INSIDE HAWELI",
         autoNext: true
       },
       {
-        video: "videos/03_torch_walk.mp4",
+        video: "03_torch_walk.mp4",
         badge: "GATE #02 PASSWORD",
         type: "input_quiz",
         prompt: "🚪 Dusra darwaza lock hai! 'Tannu ke pass aesi konsi superpower hai jo 1 second me trigger hoti hai?' (Hint: gussa / drama / nautanki / overthinking)",
@@ -277,12 +296,12 @@
         btnText: "UNLOCK GATE 2 🔓"
       },
       {
-        video: "videos/05_gate_reveal2.mp4",
+        video: "05_gate_reveal2.mp4",
         badge: "DEEP CHAMBER",
         autoNext: true
       },
       {
-        video: "videos/03_torch_walk.mp4",
+        video: "03_torch_walk.mp4",
         badge: "VAULT #03 PASSWORD",
         type: "input_quiz",
         prompt: "🚪 Aakhiri sabse dangerous darwaza! 'Doctor ne Tannu ke brain scan report me kya likha tha?' (Hint: kuch nahi / empty / 404 / 0% / khali)",
@@ -290,21 +309,21 @@
         btnText: "UNLOCK SECRET VAULT 🔓"
       },
       {
-        video: "videos/06_gate_reveal3.mp4",
+        video: "06_gate_reveal3.mp4",
         badge: "ALL EVIDENCE UNLOCKED",
         type: "button",
         prompt: "⚠️ Teeno saboot mil gaye! Dayan ka raaz khul gaya!",
         btnText: "AAGE KYA HUA? ➔"
       },
       {
-        video: "videos/07_chal_dayan.mp4",
+        video: "07_chal_dayan.mp4",
         badge: "SECRET CHAMBER",
         type: "button",
         prompt: "Panda aage bulakar report check kar raha hai...",
         btnText: "REPORT CHECK KARO ➔"
       },
       {
-        video: "videos/08_report_gussa.mp4",
+        video: "08_report_gussa.mp4",
         badge: "FINAL VERDICT",
         type: "none"
       }
@@ -317,20 +336,24 @@
     const cardBadge = document.getElementById("cardBadge");
     const cardPrompt = document.getElementById("cardPrompt");
     const cardContent = document.getElementById("cardContent");
+    const errorNotice = document.getElementById("errorNotice");
 
-    function preloadNext(index) {
-      if (index < STORY_FLOW.length) {
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.as = "video";
-        link.href = STORY_FLOW[index].video;
-        document.head.appendChild(link);
-      }
+    function showError(msg) {
+      errorNotice.innerText = msg;
+      errorNotice.style.display = "block";
     }
 
+    video.onerror = () => {
+      loader.style.display = "none";
+      const fileMissing = video.src.split('/').pop();
+      showError("⚠️ Video nahi mili: " + fileMissing + " | Check karo file ka naam!");
+    };
+
     video.onwaiting = () => { loader.style.display = "block"; };
-    video.onplaying = () => { loader.style.display = "none"; };
-    video.oncanplay = () => { loader.style.display = "none"; };
+    video.onplaying = () => {
+      loader.style.display = "none";
+      errorNotice.style.display = "none";
+    };
 
     video.onended = () => {
       onClipEnded();
@@ -339,20 +362,31 @@
     function beginTour() {
       document.getElementById("startScreen").style.display = "none";
       loadAndPlay(STORY_FLOW[0].video);
-      preloadNext(1);
     }
 
     function loadAndPlay(src) {
+      loader.style.display = "block";
+      errorNotice.style.display = "none";
+
       video.src = src;
       video.load();
-      const p = video.play();
-      if (p !== undefined) {
-        p.catch(e => {
-          console.warn("Retrying play:", e);
-          video.muted = false;
-          video.play();
-        });
-      }
+
+      const onReady = () => {
+        loader.style.display = "none";
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            console.warn("Autoplay handler:", e);
+            video.muted = false;
+            video.play();
+          });
+        }
+        video.removeEventListener('canplay', onReady);
+        video.removeEventListener('loadeddata', onReady);
+      };
+
+      video.addEventListener('canplay', onReady);
+      video.addEventListener('loadeddata', onReady);
     }
 
     function onClipEnded() {
@@ -366,7 +400,6 @@
       if (step.autoNext) {
         currentStep++;
         loadAndPlay(STORY_FLOW[currentStep].video);
-        preloadNext(currentStep + 1);
         return;
       }
 
@@ -430,7 +463,6 @@
 
       if (currentStep < STORY_FLOW.length) {
         loadAndPlay(STORY_FLOW[currentStep].video);
-        preloadNext(currentStep + 1);
       }
     }
   </script>
